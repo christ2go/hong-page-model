@@ -253,8 +253,33 @@ def evaluate(modelClass):
     print("%.2f (%.2f)"%((statistics.mean(randomvalues), statistics.stdev(randomvalues))))
 
     print("%.2f (%.2f)"%((statistics.mean(bestvalues), statistics.stdev(bestvalues))))
-teamworks = [HongPageSimulation, TournamentSimulation, RandomDictator, ChancyError, DemocraticSimulation]
-for x in teamworks:
-    evaluate(x)
+#teamworks = [HongPageSimulation, TournamentSimulation, RandomDictator, ChancyError, DemocraticSimulation]
+
+#for x in teamworks:
+#    evaluate(x)
 
 #### Export results into a .csv
+
+import argparse
+
+parser = argparse.ArgumentParser(description='Run a Hong & Page style simulation.')
+parser.add_argument('--boosted', dest='boost', action='store_const',
+                    const=True, default=False,
+                    help='run the boosted strategies (default: simple strategies)')
+parser.add_argument('-o', metavar='file',
+                    default='output.csv', type=argparse.FileType('w'),
+                    help='file to write results to (defaults to output.csv)')
+parser.add_argument('-N', metavar='N',
+                    default=2000, type=int,
+                    help='size of landscape (default 2000)')
+parser.add_argument('-M', metavar='M',
+                    default=2000, type=int,
+                    help='number of iterations per strategy (default 500)')
+
+
+args = parser.parse_args()
+
+if args.boost:
+    print("Boosted")
+else:
+    print("Not boosted")
