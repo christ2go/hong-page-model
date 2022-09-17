@@ -1,5 +1,11 @@
+import multiprocessing
 import random, itertools, statistics, collections
-from functools import lru_cache
+from functools import lru_cache, partial
+import argparse
+import csv
+import threading
+from multiprocessing.dummy import freeze_support
+from multiprocessing.pool import ThreadPool
 
 DEBUG = False # Debug flag
 """
@@ -19,16 +25,18 @@ class Landscape:
         Gets the value at the (i mod N)-th position on the landscape.
         :param i: Index
         :return: Value at the position specified by i
+
+        Since this method is called often, it is cached with an lru-cache
         """
         return self.values[i % self.N]
 
 
 
-"""
-    Represents an agent. 
-    Holds the agent's strategy as a list of numbers.
-"""
 class Agent:
+    """
+    Represents an agent.
+    Holds the agent's strategy as a list of numbers.
+    """
     def __init__(self, strategy):
         self.strategy = strategy
         self.singleScore = None
@@ -81,8 +89,19 @@ class HongPageSimulation:
         randomTeam = random.sample(self.agents, 10)
         # Compute scores
         scoreBest = (self.scoreTeam(teamOfBest))
-        scoreDiv = (self.scoreTeam(randomTeam))
-        return (scoreBest, scoreDiv)
+        scoreRand = (self.scoreTeam(randomTeam))
+        # Calculate the teams diversity
+        divBest = self.calculateDiversity(teamOfBest)
+        divRnd = self.calculateDiversity(randomTeam)
+        return (scoreBest, scoreRand, divBest, divRnd)
+    def calculateDiversity(self, team):
+        vals = []
+        for i in range(len(team)):
+            for j in range(i + 1, len(team)):
+                res = (len(team[i].strategy) - sum(x == y for x, y in zip(team[i].strategy, team[j].strategy))) / len(team[i].strategy)
+                vals.append(res)
+        return statistics.mean(vals)
+
 
     def scoreAgent(self, agent):
         """
@@ -145,11 +164,6 @@ class HongPageSimulation:
             current = nextpos
 
 
-    """
-        Outputs the data as a .csv file, for generating tables, etc 
-    """
-    def archive(self):
-        pass
 
     def getName(self):
         return "Hong-Page (default)"
@@ -227,59 +241,126 @@ class RandomDictator(HongPageSimulation):
     def getName(self):
         return "Random Dictator"
 
+
 class PairRelay(HongPageSimulation):
     def simulateMultirun(self, team, start):
         # Choose two agents and let them cooperate
-        pass
+        current = start
+        while True:
+            # Choose two agents (different)
+            a1 = random.choice(team)
+            a2 = a1
+            while a2 == a1:
+                a2 = random.choice(team)
+            # Let them cooperate by utilizing both agents powers
+            lookahead = []
+            for a in a1.strategy:
+                lookahead.append(a)
+                for b in a2.strategy:
+                    lookahead.append(b)
+                    lookahead.append(a+b)
+            # De-duplicate
+            lookahead = list(set(lookahead))
+            old = current
+            for x in lookahead:
+                if self.landscape.valueAt(current + x ) > self.landscape.valueAt(current):
+                    current = (current + x) % (self.landscape.N)
+            if old == current:
+                return self.landscape.valueAt(current)
+    def getName(self):
+        return "Pair Relay"
+
+
+class SimplePairRelay(HongPageSimulation):
+    def simulateMultirun(self, team, start):
+        # Choose two agents and let them cooperate
+        current = start
+        while True:
+            # Choose two agents (different)
+            a1 = random.choice(team)
+            a2 = a1
+            while a2 == a1:
+                a2 = random.choice(team)
+            # Let them cooperate by utilizing both agents powers
+            lookahead = a1.strategy + a2.strategy
+            # De-duplicate
+            lookahead = list(set(lookahead))
+            old = current
+            for x in lookahead:
+                if self.landscape.valueAt(current + x ) > self.landscape.valueAt(current):
+                    current = (current + x) % (self.landscape.N)
+            if old == current:
+                return self.landscape.valueAt(current)
+    def getName(self):
+        return "Simple Pair Relay"
+
+
+
 
 class BadTeamWork(HongPageSimulation):
-    pass
+    def simulateMultirun(self, team, start):
+        max = start
+        for agent in team:
+            cur = start
+            while True:
+                np = agent.nextMove(self.landscape, cur)
+                if np == cur:
+                    break
+                cur = np
+            if cur > max:
+                max = cur
+        return max
 
-def evaluate(modelClass):
+    def getName(self):
+        return "Bad Teamwork"
+
+
+def evaluate(modelClass, N):
     c1 = 0
     randomvalues = []
     bestvalues = []
-    for i in range(500):
+    diversityRnd = []
+    diversityBest = []
+    for i in range(N):
+        print(i)
         model = modelClass()
         r = model.run()
         #print(r)
-        randomvalues.append(r[1])
         bestvalues.append(r[0])
+        randomvalues.append(r[1])
+        diversityBest.append(r[2])
+        diversityRnd.append(r[3])
         if r[0] < r[1]:
             c1 = c1+1
+    return [model.getName(), round(statistics.mean(randomvalues), 2), round(statistics.stdev(randomvalues), 2),
+                     round(statistics.mean(bestvalues), 2),  round(statistics.stdev(bestvalues), 2),
+                     round(statistics.mean(diversityRnd), 2),  round(statistics.stdev(diversityRnd), 2),
+                     round(statistics.mean(diversityBest), 2),  round(statistics.stdev(diversityBest), 2)
+                     ]
+def main():
+    parser = argparse.ArgumentParser(description='Run a Hong & Page style simulation.')
+    parser.add_argument('-o', metavar='file', dest="file",
+                        default='output.csv', type=argparse.FileType('w'),
+                        help='file to write results to (defaults to output.csv)')
+    parser.add_argument('-N', metavar='N',
+                        default=50, type=int,
+                        help='number of iterations per strategy (default 50)')
 
-    print(model.getName())
-
-    print("%.2f (%.2f)"%((statistics.mean(randomvalues), statistics.stdev(randomvalues))))
-
-    print("%.2f (%.2f)"%((statistics.mean(bestvalues), statistics.stdev(bestvalues))))
-#teamworks = [HongPageSimulation, TournamentSimulation, RandomDictator, ChancyError, DemocraticSimulation]
-
-#for x in teamworks:
-#    evaluate(x)
-
-#### Export results into a .csv
-
-import argparse
-
-parser = argparse.ArgumentParser(description='Run a Hong & Page style simulation.')
-parser.add_argument('--boosted', dest='boost', action='store_const',
-                    const=True, default=False,
-                    help='run the boosted strategies (default: simple strategies)')
-parser.add_argument('-o', metavar='file',
-                    default='output.csv', type=argparse.FileType('w'),
-                    help='file to write results to (defaults to output.csv)')
-parser.add_argument('-N', metavar='N',
-                    default=2000, type=int,
-                    help='size of landscape (default 2000)')
-parser.add_argument('-M', metavar='M',
-                    default=2000, type=int,
-                    help='number of iterations per strategy (default 500)')
+    parser.add_argument('-M', metavar='M',
+                        default=2000, type=int,
+                        help='size of landscape (default 2000)')
+    args = parser.parse_args()
+    teamworks = [HongPageSimulation, TournamentSimulation, DemocraticSimulation, ChancyError, RandomDictator, PairRelay, SimplePairRelay, BadTeamWork]
+    pool = multiprocessing.Pool()
+    results = pool.map(partial(evaluate, N=args.N), teamworks)
+    pool.close()
+    pool.join()
+    print(results)
+    writer = csv.writer(args.file)
+    writer.writerow(["Model", "Avg random", "Stdev random", "Avg best", "Stdev best", "Diversity Random", "Stdev Diversity Random"])
+    writer.writerows(results)
 
 
-args = parser.parse_args()
-
-if args.boost:
-    print("Boosted")
-else:
-    print("Not boosted")
+if __name__ == '__main__':
+    freeze_support()
+    main()
