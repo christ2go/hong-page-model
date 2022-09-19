@@ -5,7 +5,6 @@ import argparse
 import csv
 import threading
 from multiprocessing.dummy import freeze_support
-from multiprocessing.pool import ThreadPool
 
 DEBUG = False # Debug flag
 """
@@ -307,9 +306,9 @@ class BadTeamWork(HongPageSimulation):
                 if np == cur:
                     break
                 cur = np
-            if cur > max:
+            if self.landscape.valueAt(cur) > self.landscape.valueAt(max):
                 max = cur
-        return max
+        return self.landscape.valueAt(max)
 
     def getName(self):
         return "Bad Teamwork"
