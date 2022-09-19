@@ -6,6 +6,9 @@ import csv
 import threading
 from multiprocessing.dummy import freeze_support
 
+import scipy.stats as stats
+import numpy as np
+
 DEBUG = False # Debug flag
 """
     Represents a landscape (i.e. circle) on which the algorithm runs
@@ -331,10 +334,15 @@ def evaluate(modelClass, N):
         diversityRnd.append(r[3])
         if r[0] < r[1]:
             c1 = c1+1
+
+        # Evaluate statistical significance
+    pval = stats.ttest_ind(np.array(bestvalues), np.array(randomvalues), equal_var = False).pvalue
+    print("significant" if pval < 0.05 else "insignificant")
     return [model.getName(), round(statistics.mean(randomvalues), 2), round(statistics.stdev(randomvalues), 2),
                      round(statistics.mean(bestvalues), 2),  round(statistics.stdev(bestvalues), 2),
                      round(statistics.mean(diversityRnd), 2),  round(statistics.stdev(diversityRnd), 2),
-                     round(statistics.mean(diversityBest), 2),  round(statistics.stdev(diversityBest), 2)
+                     round(statistics.mean(diversityBest), 2),  round(statistics.stdev(diversityBest), 2),
+                     pval
                      ]
 def main():
     parser = argparse.ArgumentParser(description='Run a Hong & Page style simulation.')
