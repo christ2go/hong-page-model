@@ -1,4 +1,4 @@
-Model,Avg random,Stdev random,Avg best,Stdev best,Diversity Random,Stdev Diversity Random
+Model,Avg random,Stdev random,Avg best,Stdev best,Diversity Random,Stdev Diversity Random,Diversity Best,Stdev Diversity Best,pval
 Hong-Page (default),94.61,0.61,92.82,1.29,0.92,0.02,0.83,0.06,5.202551297664013e-13
 Tournament,95.02,0.43,93.42,1.05,0.92,0.02,0.83,0.05,8.602393673552181e-15
 Democracy,94.57,0.6,92.94,1.13,0.92,0.02,0.84,0.05,1.3771235898058038e-13

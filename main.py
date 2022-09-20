@@ -364,7 +364,7 @@ def main():
     pool.join()
     print(results)
     writer = csv.writer(args.file)
-    writer.writerow(["Model", "Avg random", "Stdev random", "Avg best", "Stdev best", "Diversity Random", "Stdev Diversity Random"])
+    writer.writerow(["Model", "Avg random", "Stdev random", "Avg best", "Stdev best", "Diversity Random", "Stdev Diversity Random", "Diversity Best", "Stdev Diversity Best", "pval"])
     writer.writerows(results)
 
 
