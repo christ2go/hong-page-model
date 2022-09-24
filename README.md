@@ -4,7 +4,6 @@
 The project is built using Python 3.9, and has no external dependencies. 
 Upon running ``python3 main.py`` it prints the results from the model and creates a file named ``results.csv``. 
 
-For better performance, one might want to consider using PyPy3 (a JIT compiler for python) instead of Python3.9.
 ## Command line options 
 ```
 usage: main.py [-h] [-o file] [-N N] [-M M]
