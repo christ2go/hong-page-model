@@ -3,7 +3,7 @@ Generates a LaTex Table from the output CSV
 """
 
 import csv
-with open("output.csv", "r") as file:
+with open("output/output.csv", "r") as file:
     reader = csv.reader(file)
     next(reader)
     for row in reader:
