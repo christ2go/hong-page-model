@@ -16,7 +16,7 @@ DEBUG = False # Debug flag
     (Internally this is just a list with a fancy method to get values at different positions)
 """
 class Landscape:
-    def __init__(self, N = 2000, max = 100):
+    def __init__(self, N, max = 100):
         self.values = []
         self.N = N
         for i in range(N):
@@ -63,8 +63,8 @@ class Agent:
     The parameter m is the maximum lookahead an agent can have. In the original paper, m = 12.
 """
 class HongPageSimulation:
-    def __init__(self, m = 12):
-        self.landscape = Landscape()
+    def __init__(self, m = 12, N = 2000):
+        self.landscape = Landscape(N = N)
         self.agents = []
         # Generate all the agents
         # the length of the permutation is 3
@@ -317,15 +317,15 @@ class BadTeamWork(HongPageSimulation):
         return "Bad Teamwork"
 
 
-def evaluate(modelClass, N):
+def evaluate(modelClass, N, M):
     c1 = 0
     randomvalues = []
     bestvalues = []
     diversityRnd = []
     diversityBest = []
-    for i in range(N):
+    for i in range(M):
         print(i)
-        model = modelClass()
+        model = modelClass(N = N)
         r = model.run()
         #print(r)
         bestvalues.append(r[0])
@@ -349,17 +349,17 @@ def main():
     parser.add_argument('-o', metavar='file', dest="file",
                         default='output.csv', type=argparse.FileType('w'),
                         help='file to write results to (defaults to output.csv)')
-    parser.add_argument('-N', metavar='N',
+    parser.add_argument('-M', metavar='M',
                         default=50, type=int,
                         help='number of iterations per strategy (default 50)')
 
-    parser.add_argument('-M', metavar='M',
+    parser.add_argument('-N', metavar='N',
                         default=2000, type=int,
                         help='size of landscape (default 2000)')
     args = parser.parse_args()
     teamworks = [HongPageSimulation, TournamentSimulation, DemocraticSimulation, ChancyError, RandomDictator, PairRelay, SimplePairRelay, BadTeamWork]
     pool = multiprocessing.Pool()
-    results = pool.map(partial(evaluate, N=args.N), teamworks)
+    results = pool.map(partial(evaluate, N=args.N, M=args.M), teamworks)
     pool.close()
     pool.join()
     print(results)

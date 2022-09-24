@@ -6,13 +6,13 @@ Upon running ``python3 main.py`` it prints the results from the model and create
 
 ## Command line options 
 ```
-usage: main.py [-h] [-o file] [-N N] [-M M]
+usage: main.py [-h] [-o file] [-M M] [-N N]
 
 Run a Hong & Page style simulation.
 
 optional arguments:
--h, --help  show this help message and exit
--o file     file to write results to (defaults to output.csv)
--N N        size of landscape (default 2000)
--M M        number of iterations per strategy (default 500)
+  -h, --help  show this help message and exit
+  -o file     file to write results to (defaults to output.csv)
+  -M M        number of iterations per strategy (default 50)
+  -N N        size of landscape (default 2000)
 
