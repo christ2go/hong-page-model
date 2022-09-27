@@ -3,7 +3,6 @@ import random, itertools, statistics, collections
 from functools import lru_cache, partial
 import argparse
 import csv
-import threading
 from multiprocessing.dummy import freeze_support
 
 import scipy.stats as stats
@@ -356,9 +355,12 @@ def main():
     parser.add_argument('-N', metavar='N',
                         default=2000, type=int,
                         help='size of landscape (default 2000)')
+    parser.add_argument('-t', metavar='t',
+                        default=8, type=int,
+                        help='number of threads (default 8)')
     args = parser.parse_args()
     teamworks = [HongPageSimulation, TournamentSimulation, DemocraticSimulation, ChancyError, RandomDictator, PairRelay, SimplePairRelay, BadTeamWork]
-    pool = multiprocessing.Pool()
+    pool = multiprocessing.Pool(args.t)
     results = pool.map(partial(evaluate, N=args.N, M=args.M), teamworks)
     pool.close()
     pool.join()
