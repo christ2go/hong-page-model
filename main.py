@@ -57,11 +57,17 @@ class Agent:
         return position
 
 
-"""
-    This implements the classic Hong & Page simulation.  
-    The parameter m is the maximum lookahead an agent can have. In the original paper, m = 12.
-"""
 class HongPageSimulation:
+    """
+    This implements the classic Hong & Page simulation.
+    The parameter m is the maximum lookahead an agent can have. In the original paper, m = 12.
+
+    Each of the other types of teamwork inherit from this class and override the simulateMultirun methods.
+    Some also additionally override the simulateSingle method.
+
+    """
+
+
     def __init__(self, m = 12, N = 2000):
         self.landscape = Landscape(N = N)
         self.agents = []
@@ -75,7 +81,7 @@ class HongPageSimulation:
     def run(self):
         """
         Simulates two teams, one with the best agents, one with random agents
-        :return: a tuple containing score of team of best agents and the team of random agents, in that order
+        :return: a quadruple containing score of team of best agents and the team of random agents, and their diversities
         """
         # Evaluate each agent from each starting position individually
         for agent in self.agents:
@@ -95,7 +101,12 @@ class HongPageSimulation:
         divBest = self.calculateDiversity(teamOfBest)
         divRnd = self.calculateDiversity(randomTeam)
         return (scoreBest, scoreRand, divBest, divRnd)
+
     def calculateDiversity(self, team):
+        """
+        Calulates the diversity of a team.
+        (Inspired by Wallrich's implementation)
+        """
         vals = []
         for i in range(len(team)):
             for j in range(i + 1, len(team)):
@@ -134,6 +145,11 @@ class HongPageSimulation:
 
 
     def scoreTeam(self, team):
+        """
+        The score of a team is computed by letting it start from every position and computing the average of their scores
+        :param team: list of agents
+        :return: average score when starting from each position
+        """
         sum = 0
         for pos in range(self.landscape.N):
             sum += self.simulateMultirun(team, pos)
@@ -167,19 +183,24 @@ class HongPageSimulation:
 
 
     def getName(self):
+        """
+        Method used for getting the name of the kind of teamwork that is done
+        """
         return "Hong-Page (default)"
 
-""""
-    In a tournament, every agent's llokahead is considered
-"""
 class TournamentSimulation(HongPageSimulation):
+    """"
+        In a tournament, every agent's lookahead is considered
+    """
 
     def simulateMultirun(self, team, start):
         current = start
         while True:
             old = current
+            # Find the best spot, by consulting every agent
             for agent in team:
                 nextpos = agent.nextMove(self.landscape, old)
+                # Does this agent's move lead to a better position?
                 if self.landscape.valueAt(nextpos) > self.landscape.valueAt(current):
                     current = nextpos
             if current == old:
@@ -189,12 +210,13 @@ class TournamentSimulation(HongPageSimulation):
 
 class DemocraticSimulation(HongPageSimulation):
     """
-    Uses a voting procedure among the agents to select the next position
+    Uses a voting procedure (plurality vote) among the agents to select the next position
     """
     def simulateMultirun(self, team, start):
         current = start
         while True:
             votes = []
+            # Get the next move from each agent
             for agent in team:
                 nextpos = agent.nextMove(self.landscape, current)
                 if nextpos != current:
@@ -211,11 +233,16 @@ class DemocraticSimulation(HongPageSimulation):
 
 
 class ChancyError(HongPageSimulation):
+    """
+    Implements a relay scheme, where with a certain probability the agent just moves to the offset indicated by the
+    first number in their strategy vector.
+    """
     def simulateSingle(self, agent, start):
         pos = start
         i = 0
         while True:
-            if random.uniform(0,1) < 0.05:
+            # Throw the dice
+            if random.uniform(0,1) < 0.05: # 5% chance
                 nextpos = pos + agent.strategy[1]
             else:
                 nextpos = agent.nextMove(self.landscape, pos)
@@ -231,10 +258,10 @@ class RandomDictator(HongPageSimulation):
     def simulateMultirun(self, team, start):
         current = start
         while True:
-            # Choose a random agent
-            agent = random.choice(team)
+            # Choose a random agent, to be the dictator
+            dictator = random.choice(team)
             # Compute with this agent
-            next = agent.nextMove(self.landscape, current)
+            next = dictator.nextMove(self.landscape, current)
             if next == current:
                 return self.landscape.valueAt(current)
             current = next
@@ -260,9 +287,10 @@ class PairRelay(HongPageSimulation):
                 for b in a2.strategy:
                     lookahead.append(b)
                     lookahead.append(a+b)
-            # De-duplicate
+            # De-duplicate (for efficency)
             lookahead = list(set(lookahead))
             old = current
+            # Check which ofset from the ones in lookahead is best
             for x in lookahead:
                 if self.landscape.valueAt(current + x ) > self.landscape.valueAt(current):
                     current = (current + x) % (self.landscape.N)
@@ -301,6 +329,7 @@ class SimplePairRelay(HongPageSimulation):
 class BadTeamWork(HongPageSimulation):
     def simulateMultirun(self, team, start):
         max = start
+        # Simulates each agent individually
         for agent in team:
             cur = start
             while True:
@@ -317,6 +346,13 @@ class BadTeamWork(HongPageSimulation):
 
 
 def evaluate(modelClass, N, M):
+    """
+    Evaluates the given class
+    :param modelClass: the type of teamwork to use (given as a class)
+    :param N: size of the landscape
+    :param M: number of iterations
+    :return: an array, that is later printed into the csv file
+    """
     c1 = 0
     randomvalues = []
     bestvalues = []
@@ -343,7 +379,12 @@ def evaluate(modelClass, N, M):
                      round(statistics.mean(diversityBest), 2),  round(statistics.stdev(diversityBest), 2),
                      pval
                      ]
+
 def main():
+    """
+    Main method
+    """
+    # Parse the command line arguments
     parser = argparse.ArgumentParser(description='Run a Hong & Page style simulation.')
     parser.add_argument('-o', metavar='file', dest="file",
                         default='output.csv', type=argparse.FileType('w'),
@@ -359,16 +400,20 @@ def main():
                         default=8, type=int,
                         help='number of threads (default 8)')
     args = parser.parse_args()
+    # Create a list of the teamworks we consider
     teamworks = [HongPageSimulation, TournamentSimulation, DemocraticSimulation, ChancyError, RandomDictator, PairRelay, SimplePairRelay, BadTeamWork]
+    # Create a pool with t threads, for multithreading
     pool = multiprocessing.Pool(args.t)
+    # Get the results as a list of outputs
     results = pool.map(partial(evaluate, N=args.N, M=args.M), teamworks)
     pool.close()
     pool.join()
+
     print(results)
+    # Write the results to the file
     writer = csv.writer(args.file)
     writer.writerow(["Model", "Avg random", "Stdev random", "Avg best", "Stdev best", "Diversity Random", "Stdev Diversity Random", "Diversity Best", "Stdev Diversity Best", "pval"])
     writer.writerows(results)
-
 
 if __name__ == '__main__':
     freeze_support()
